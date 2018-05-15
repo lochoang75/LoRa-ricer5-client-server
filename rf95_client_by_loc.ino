@@ -21,6 +21,7 @@ int max_time = 150;         // max time for waiting to send data
 void die(String error)
 {
   Serial.println(error);
+  delay(100);
 }
 void setup() 
 {
@@ -40,15 +41,16 @@ void setup()
 // Send ID to server
 void send_ID(int& state)
 {
-  delay(57);        // Delay time to sent data
-  Serial.println("Start send ID to server");
+  delay(56);        // Delay time to sent data
+  //die("Start send ID to server");
   // Send a message to rf95_server
   uint8_t *id = new uint8_t;
   strcat((char*) id,ID);
   rf95.send(id, sizeof(id));
   digitalWrite(8,HIGH);
   rf95.waitPacketSent();
-  delete id;
+  //delay(100);
+  //delete id;
   state++;
 }
 
@@ -57,14 +59,15 @@ void send_ID(int& state)
 void accept_ID(int& state)
 {
   if(rf95.waitAvailableTimeout(100)){
-    uint8_t buf[strlen(ID)+2] = "";
+    uint8_t buf[strlen(ID)+2];
     char* checkSum = new char();
     checkSum ="w";
     strcat(checkSum,ID);
     uint8_t bufsize = sizeof(buf);
     
-    if (rf95.recv(buf, bufsize) && strcmp((char*)buf, checkSum) == 0)
+    if (rf95.recv(buf, bufsize) && !strcmp((char*)buf,checkSum))
     {
+      die((char*)buf);
       die("ID has been accept. Please wait to sending your data");
       state++;
       delete checkSum;
@@ -73,6 +76,7 @@ void accept_ID(int& state)
     else
     {
       state--;
+      die("Not same");
       delete checkSum;
       return;
     }
@@ -80,6 +84,7 @@ void accept_ID(int& state)
   else
   {
     state--;
+    die("can't catch");
     return;
   }
 }
@@ -211,9 +216,14 @@ void loop()
         
     case waitingReq:
     {
-        char * correct_data = new char();
+        char * correct_data = new char[strlen(ID)+3];
         correct_data = "ok";
-        strcat(correct_data,ID);
+        for(int i = 0; i < strlen(ID); i++)
+        {
+          correct_data[i+2] = ID[i]; 
+        }
+        correct_data[strlen(ID)+2] = '\0';
+        delay(100);
         for(int i = 0;i < 250;i++){
           waiting_request(state,correct_data);
           if(state != 3) break;
