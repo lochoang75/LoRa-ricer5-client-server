@@ -26,12 +26,11 @@ void die(String error)
 void setup() 
 {
   dht.begin();
-  pinMode(8, OUTPUT);
-  digitalWrite(8, HIGH);
-  rf95.init();
+  //rf95.init();
   Serial.begin(115200);
   //while (!Serial) ; // Wait for serial port to be available
   if (!rf95.init()) die("Can't init rf95");
+  else die("Init successful");
   rf95.setFrequency(434.0);
   // Defaults after init are 434.0MHz, 13dBm, Bw = 125 kHz, Cr = 4/5, Sf = 128chips/symbol, CRC on
   //rf95.setModemConfig(RH_RF95::Bw500Cr45Sf128); 
@@ -46,9 +45,12 @@ void send_ID(int& state)
   // Send a message to rf95_server
   uint8_t *id = new uint8_t;
   strcat((char*) id,ID);
-  rf95.send(id, sizeof(id));
-  digitalWrite(8,HIGH);
+  bool send_success = rf95.send(id, sizeof(id));
   rf95.waitPacketSent();
+  if(send_success)
+	  die("Send ID finish");
+  else
+	  die("Cant send ID");
   //delay(100);
   //delete id;
   state++;
@@ -97,10 +99,6 @@ void waiting_request(int& state,char* correct_data){
     uint8_t bufsize = sizeof(uint8_t)*RH_RF95_MAX_MESSAGE_LEN; 
     if(rf95.recv(buf, &bufsize)) 
     {
-      if(strcmp((char*)buf,correct_data) != 0) return;
-      state++; // It's time to send data
-      delete correct_data;
-      return;
     }
     else delay(100); // reduce waitting time by 1 and countinue to waiting request from server
   }
@@ -189,11 +187,13 @@ void send_Data(int& state){
   Serial.println((char*)standarData);
 
   // send data string to server
-  rf95.send(standarData, dataLength);
+  bool send_success = rf95.send(standarData, dataLength);
   rf95.waitPacketSent();
   delete standarData;
-  delay(100);
-  Serial.println("Send done"); 
+  if(send_success)
+	die("Send done");
+  else
+	die("Cant send");
   state++;
 }
 
